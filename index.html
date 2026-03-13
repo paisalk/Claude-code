@@ -137,12 +137,44 @@
       margin-top: 16px;
       min-height: 1.2em;
     }
+
+    .currency-toggle {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 50px;
+      padding: 4px;
+      margin-bottom: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .currency-toggle button {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 24px;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .currency-toggle button.active {
+      background: #f7931a;
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(247, 147, 26, 0.4);
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="logo">₿</div>
     <h1>Bitcoin Exchange Rate</h1>
+
+    <div class="currency-toggle">
+      <button id="btn-usd" class="active" onclick="setCurrency('usd')">USD $</button>
+      <button id="btn-thb" onclick="setCurrency('thb')">THB ฿</button>
+    </div>
 
     <div class="rates">
       <div class="rate-block">
@@ -179,11 +211,35 @@
     const errorEl = document.getElementById('error-msg');
     const btn     = document.getElementById('refresh-btn');
 
-    function formatUSD(value, decimals = 2) {
-      return new Intl.NumberFormat('en-US', {
+    let activeCurrency = 'usd';
+    let cachedRates = null;
+
+    const currencyConfig = {
+      usd: { symbol: '$', code: 'USD', locale: 'en-US', satDecimals: 8 },
+      thb: { symbol: '฿', code: 'THB', locale: 'th-TH', satDecimals: 6 },
+    };
+
+    function formatValue(value, decimals, locale) {
+      return new Intl.NumberFormat(locale, {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(value);
+    }
+
+    function renderRates() {
+      if (!cachedRates) return;
+      const cfg = currencyConfig[activeCurrency];
+      const btcPrice = cachedRates[activeCurrency];
+      const satPrice = btcPrice / SATS_PER_BTC;
+      btcEl.innerHTML = `${cfg.symbol}${formatValue(btcPrice, 2, cfg.locale)}<span class="currency">${cfg.code}</span>`;
+      satEl.innerHTML = `${cfg.symbol}${formatValue(satPrice, cfg.satDecimals, cfg.locale)}<span class="currency">${cfg.code}</span>`;
+    }
+
+    function setCurrency(currency) {
+      activeCurrency = currency;
+      document.getElementById('btn-usd').classList.toggle('active', currency === 'usd');
+      document.getElementById('btn-thb').classList.toggle('active', currency === 'thb');
+      renderRates();
     }
 
     async function fetchRates() {
@@ -195,16 +251,13 @@
 
       try {
         const res = await fetch(
-          'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
+          'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,thb'
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        const btcPrice = data.bitcoin.usd;
-        const satPrice = btcPrice / SATS_PER_BTC;
-
-        btcEl.innerHTML = `$${formatUSD(btcPrice)}<span class="currency">USD</span>`;
-        satEl.innerHTML = `$${formatUSD(satPrice, 8)}<span class="currency">USD</span>`;
+        cachedRates = { usd: data.bitcoin.usd, thb: data.bitcoin.thb };
+        renderRates();
 
         const now = new Date();
         metaEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
