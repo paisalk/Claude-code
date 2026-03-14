@@ -231,7 +231,7 @@
       const cfg = currencyConfig[activeCurrency];
       const btcPrice = cachedRates[activeCurrency];
       const satPrice = btcPrice / SATS_PER_BTC;
-      btcEl.innerHTML = `${cfg.symbol}${formatValue(btcPrice, 2, cfg.locale)}<span class="currency">${cfg.code}</span>`;
+      btcEl.innerHTML = `${cfg.symbol}${formatValue(btcPrice, 0, cfg.locale)}<span class="currency">${cfg.code}</span>`;
       satEl.innerHTML = `${cfg.symbol}${formatValue(satPrice, cfg.satDecimals, cfg.locale)}<span class="currency">${cfg.code}</span>`;
     }
 
