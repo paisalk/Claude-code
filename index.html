@@ -368,17 +368,17 @@
       errorEl.textContent = '';
 
       try {
-        const [resBtc, resUsdtThb] = await Promise.all([
+        const [resBtc, resFx] = await Promise.all([
           fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
-          fetch('https://api.binance.com/api/v3/ticker/price?symbol=USDTTHB'),
+          fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json'),
         ]);
         if (!resBtc.ok) throw new Error(`HTTP ${resBtc.status}`);
-        if (!resUsdtThb.ok) throw new Error(`HTTP ${resUsdtThb.status}`);
-        const [dataBtc, dataUsdtThb] = await Promise.all([resBtc.json(), resUsdtThb.json()]);
+        if (!resFx.ok) throw new Error(`HTTP ${resFx.status}`);
+        const [dataBtc, dataFx] = await Promise.all([resBtc.json(), resFx.json()]);
 
         const btcUsd = parseFloat(dataBtc.price);
-        const usdtThb = parseFloat(dataUsdtThb.price);
-        cachedRates = { usd: btcUsd, thb: btcUsd * usdtThb };
+        const usdToThb = dataFx.usd.thb;
+        cachedRates = { usd: btcUsd, thb: btcUsd * usdToThb };
         renderRates();
 
         const now = new Date();
