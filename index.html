@@ -164,6 +164,70 @@
       color: #fff;
       box-shadow: 0 2px 12px rgba(247, 147, 26, 0.4);
     }
+
+    .converter {
+      margin-top: 36px;
+      padding-top: 36px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .converter h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f7931a;
+      margin-bottom: 24px;
+      letter-spacing: 0.04em;
+    }
+
+    .converter-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .converter-row .input-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    .converter-row label {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 6px;
+      text-align: left;
+    }
+
+    .converter-row input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .converter-row input:focus {
+      border-color: #f7931a;
+    }
+
+    .converter-row input::placeholder {
+      color: rgba(255, 255, 255, 0.25);
+    }
+
+    .swap-icon {
+      margin-top: 18px;
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.4);
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -200,22 +264,40 @@
     </button>
 
     <div class="error" id="error-msg"></div>
+
+    <div class="converter">
+      <h2>Satoshi Converter</h2>
+      <div class="converter-row">
+        <div class="input-wrap">
+          <label id="fiat-label">USD ($)</label>
+          <input type="text" id="fiat-input" placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="swap-icon">⇄</div>
+        <div class="input-wrap">
+          <label>Satoshi (sat)</label>
+          <input type="text" id="sat-input" placeholder="0" inputmode="numeric">
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
     const SATS_PER_BTC = 100_000_000;
 
-    const btcEl   = document.getElementById('btc-rate');
-    const satEl   = document.getElementById('sat-rate');
-    const metaEl  = document.getElementById('last-updated');
-    const errorEl = document.getElementById('error-msg');
-    const btn     = document.getElementById('refresh-btn');
+    const btcEl     = document.getElementById('btc-rate');
+    const satEl     = document.getElementById('sat-rate');
+    const metaEl    = document.getElementById('last-updated');
+    const errorEl   = document.getElementById('error-msg');
+    const btn       = document.getElementById('refresh-btn');
+    const fiatInput = document.getElementById('fiat-input');
+    const satInput  = document.getElementById('sat-input');
+    const fiatLabel = document.getElementById('fiat-label');
 
     let activeCurrency = 'usd';
     let cachedRates = null;
 
     const currencyConfig = {
-      usd: { symbol: '$', code: 'USD', locale: 'en-US', satDecimals: 8 },
+      usd: { symbol: '$', code: 'USD', locale: 'en-US', satDecimals: 6 },
       thb: { symbol: '฿', code: 'THB', locale: 'th-TH', satDecimals: 6 },
     };
 
@@ -224,6 +306,10 @@
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(value);
+    }
+
+    function parseInputNumber(str) {
+      return parseFloat(str.replace(/,/g, '')) || 0;
     }
 
     function renderRates() {
@@ -235,11 +321,43 @@
       satEl.innerHTML = `${cfg.symbol}${formatValue(satPrice, cfg.satDecimals, cfg.locale)}<span class="currency">${cfg.code}</span>`;
     }
 
+    function updateConverterLabel() {
+      const cfg = currencyConfig[activeCurrency];
+      fiatLabel.textContent = `${cfg.code} (${cfg.symbol})`;
+    }
+
+    function convertFiatToSat() {
+      if (!cachedRates) return;
+      const fiatVal = parseInputNumber(fiatInput.value);
+      if (fiatVal === 0) { satInput.value = ''; return; }
+      const btcPrice = cachedRates[activeCurrency];
+      const satPrice = btcPrice / SATS_PER_BTC;
+      const sats = Math.round(fiatVal / satPrice);
+      satInput.value = sats.toLocaleString('en-US');
+    }
+
+    function convertSatToFiat() {
+      if (!cachedRates) return;
+      const cfg = currencyConfig[activeCurrency];
+      const sats = parseInputNumber(satInput.value);
+      if (sats === 0) { fiatInput.value = ''; return; }
+      const btcPrice = cachedRates[activeCurrency];
+      const satPrice = btcPrice / SATS_PER_BTC;
+      const fiatVal = sats * satPrice;
+      fiatInput.value = formatValue(fiatVal, 2, cfg.locale);
+    }
+
+    fiatInput.addEventListener('input', convertFiatToSat);
+    satInput.addEventListener('input', convertSatToFiat);
+
     function setCurrency(currency) {
       activeCurrency = currency;
       document.getElementById('btn-usd').classList.toggle('active', currency === 'usd');
       document.getElementById('btn-thb').classList.toggle('active', currency === 'thb');
       renderRates();
+      updateConverterLabel();
+      fiatInput.value = '';
+      satInput.value = '';
     }
 
     async function fetchRates() {
