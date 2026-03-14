@@ -368,13 +368,15 @@
       errorEl.textContent = '';
 
       try {
-        const res = await fetch(
-          'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,thb'
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const [resUsd, resThb] = await Promise.all([
+          fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
+          fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCTHB'),
+        ]);
+        if (!resUsd.ok) throw new Error(`HTTP ${resUsd.status}`);
+        if (!resThb.ok) throw new Error(`HTTP ${resThb.status}`);
+        const [dataUsd, dataThb] = await Promise.all([resUsd.json(), resThb.json()]);
 
-        cachedRates = { usd: data.bitcoin.usd, thb: data.bitcoin.thb };
+        cachedRates = { usd: parseFloat(dataUsd.price), thb: parseFloat(dataThb.price) };
         renderRates();
 
         const now = new Date();
