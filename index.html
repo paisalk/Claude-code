@@ -279,19 +279,37 @@
         </div>
       </div>
     </div>
+
+    <div class="converter">
+      <h2>Bitcoin Converter</h2>
+      <div class="converter-row">
+        <div class="input-wrap">
+          <label id="btc-fiat-label">USD ($)</label>
+          <input type="text" id="btc-fiat-input" placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="swap-icon">⇄</div>
+        <div class="input-wrap">
+          <label>Bitcoin (BTC)</label>
+          <input type="text" id="btc-input" placeholder="0.00000000" inputmode="decimal">
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
     const SATS_PER_BTC = 100_000_000;
 
-    const btcEl     = document.getElementById('btc-rate');
-    const satEl     = document.getElementById('sat-rate');
-    const metaEl    = document.getElementById('last-updated');
-    const errorEl   = document.getElementById('error-msg');
-    const btn       = document.getElementById('refresh-btn');
-    const fiatInput = document.getElementById('fiat-input');
-    const satInput  = document.getElementById('sat-input');
-    const fiatLabel = document.getElementById('fiat-label');
+    const btcEl       = document.getElementById('btc-rate');
+    const satEl       = document.getElementById('sat-rate');
+    const metaEl      = document.getElementById('last-updated');
+    const errorEl     = document.getElementById('error-msg');
+    const btn         = document.getElementById('refresh-btn');
+    const fiatInput   = document.getElementById('fiat-input');
+    const satInput    = document.getElementById('sat-input');
+    const fiatLabel   = document.getElementById('fiat-label');
+    const btcFiatInput  = document.getElementById('btc-fiat-input');
+    const btcInput      = document.getElementById('btc-input');
+    const btcFiatLabel  = document.getElementById('btc-fiat-label');
 
     let activeCurrency = 'usd';
     let cachedRates = null;
@@ -324,6 +342,7 @@
     function updateConverterLabel() {
       const cfg = currencyConfig[activeCurrency];
       fiatLabel.textContent = `${cfg.code} (${cfg.symbol})`;
+      btcFiatLabel.textContent = `${cfg.code} (${cfg.symbol})`;
     }
 
     function convertFiatToSat() {
@@ -347,8 +366,28 @@
       fiatInput.value = formatValue(fiatVal, 2, cfg.locale);
     }
 
+    function convertBtcFiatToBtc() {
+      if (!cachedRates) return;
+      const cfg = currencyConfig[activeCurrency];
+      const fiatVal = parseInputNumber(btcFiatInput.value);
+      if (fiatVal === 0) { btcInput.value = ''; return; }
+      const btcPrice = cachedRates[activeCurrency];
+      btcInput.value = formatValue(fiatVal / btcPrice, 8, 'en-US');
+    }
+
+    function convertBtcToBtcFiat() {
+      if (!cachedRates) return;
+      const cfg = currencyConfig[activeCurrency];
+      const btcVal = parseInputNumber(btcInput.value);
+      if (btcVal === 0) { btcFiatInput.value = ''; return; }
+      const btcPrice = cachedRates[activeCurrency];
+      btcFiatInput.value = formatValue(btcVal * btcPrice, 2, cfg.locale);
+    }
+
     fiatInput.addEventListener('input', convertFiatToSat);
     satInput.addEventListener('input', convertSatToFiat);
+    btcFiatInput.addEventListener('input', convertBtcFiatToBtc);
+    btcInput.addEventListener('input', convertBtcToBtcFiat);
 
     function setCurrency(currency) {
       activeCurrency = currency;
@@ -358,6 +397,8 @@
       updateConverterLabel();
       fiatInput.value = '';
       satInput.value = '';
+      btcFiatInput.value = '';
+      btcInput.value = '';
     }
 
     async function fetchRates() {
@@ -368,13 +409,17 @@
       errorEl.textContent = '';
 
       try {
-        const res = await fetch(
-          'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,thb'
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const [resBtc, resUsdtThb] = await Promise.all([
+          fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
+          fetch('https://api.binance.th/api/v1/ticker/bookTicker?symbol=USDTTHB'),
+        ]);
+        if (!resBtc.ok) throw new Error(`HTTP ${resBtc.status}`);
+        if (!resUsdtThb.ok) throw new Error(`HTTP ${resUsdtThb.status}`);
+        const [dataBtc, dataUsdtThb] = await Promise.all([resBtc.json(), resUsdtThb.json()]);
 
-        cachedRates = { usd: data.bitcoin.usd, thb: data.bitcoin.thb };
+        const btcUsd = parseFloat(dataBtc.price);
+        const usdtThb = (parseFloat(dataUsdtThb.bidPrice) + parseFloat(dataUsdtThb.askPrice)) / 2;
+        cachedRates = { usd: btcUsd, thb: btcUsd * usdtThb };
         renderRates();
 
         const now = new Date();
