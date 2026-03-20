@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thai Baht Exchange Rate</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+      padding: 40px 20px;
+    }
+
+    .back-link {
+      align-self: flex-start;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.45);
+      text-decoration: none;
+      margin-bottom: 36px;
+      transition: color 0.2s;
+      letter-spacing: 0.04em;
+    }
+    .back-link:hover { color: rgba(255, 255, 255, 0.85); }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    header .logo {
+      font-size: 3rem;
+      margin-bottom: 10px;
+    }
+
+    header h1 {
+      font-size: 1.7rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #4ecdc4;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      font-size: 0.88rem;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .rates-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      width: min(900px, 100%);
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 700px) {
+      .rates-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 420px) {
+      .rates-grid { grid-template-columns: 1fr; }
+    }
+
+    .rate-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 18px;
+      padding: 24px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .rate-card:hover {
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(78, 205, 196, 0.35);
+    }
+
+    .currency-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .currency-flag {
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .currency-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .currency-code {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #4ecdc4;
+      letter-spacing: 0.06em;
+    }
+
+    .currency-name {
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.4);
+      letter-spacing: 0.03em;
+    }
+
+    .rate-row {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 10px;
+    }
+
+    .rate-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.35);
+      margin-bottom: 4px;
+    }
+
+    .rate-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+      min-height: 2rem;
+      transition: opacity 0.3s;
+      letter-spacing: -0.01em;
+    }
+
+    .rate-value.loading { opacity: 0.3; }
+
+    .rate-value .thb-unit {
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.45);
+      margin-left: 4px;
+    }
+
+    .rate-inverse {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.35);
+      margin-top: 2px;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: min(900px, 100%);
+    }
+
+    .meta {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.35);
+      min-height: 1.2em;
+    }
+
+    .refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #4ecdc4;
+      color: #0f0c29;
+      border: none;
+      border-radius: 50px;
+      padding: 13px 34px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(78, 205, 196, 0.35);
+    }
+
+    .refresh-btn:hover:not(:disabled) {
+      background: #3ab8b0;
+      box-shadow: 0 6px 28px rgba(78, 205, 196, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .refresh-btn:active:not(:disabled) { transform: translateY(0); }
+    .refresh-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .refresh-btn svg { transition: transform 0.6s; }
+    .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error {
+      color: #ff6b6b;
+      font-size: 0.82rem;
+      min-height: 1.2em;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <a class="back-link" href="index.html">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2.5"
+         stroke-linecap="round" stroke-linejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"></line>
+      <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    Dashboard
+  </a>
+
+  <header>
+    <div class="logo">🇹🇭</div>
+    <h1>Thai Baht Exchange Rate</h1>
+    <p>1 unit of foreign currency → Thai Baht (THB ฿)</p>
+  </header>
+
+  <div class="rates-grid" id="rates-grid">
+
+    <div class="rate-card" id="card-usd">
+      <div class="currency-header">
+        <div class="currency-flag">🇺🇸</div>
+        <div class="currency-info">
+          <div class="currency-code">USD</div>
+          <div class="currency-name">US Dollar</div>
+        </div>
+      </div>
+      <div class="rate-row">
+        <div class="rate-label">1 USD =</div>
+        <div class="rate-value loading" id="rate-usd">—<span class="thb-unit">THB</span></div>
+        <div class="rate-inverse" id="inv-usd"></div>
+      </div>
+    </div>
+
+    <div class="rate-card" id="card-gbp">
+      <div class="currency-header">
+        <div class="currency-flag">🇬🇧</div>
+        <div class="currency-info">
+          <div class="currency-code">GBP</div>
+          <div class="currency-name">British Pound</div>
+        </div>
+      </div>
+      <div class="rate-row">
+        <div class="rate-label">1 GBP =</div>
+        <div class="rate-value loading" id="rate-gbp">—<span class="thb-unit">THB</span></div>
+        <div class="rate-inverse" id="inv-gbp"></div>
+      </div>
+    </div>
+
+    <div class="rate-card" id="card-eur">
+      <div class="currency-header">
+        <div class="currency-flag">🇪🇺</div>
+        <div class="currency-info">
+          <div class="currency-code">EUR</div>
+          <div class="currency-name">Euro</div>
+        </div>
+      </div>
+      <div class="rate-row">
+        <div class="rate-label">1 EUR =</div>
+        <div class="rate-value loading" id="rate-eur">—<span class="thb-unit">THB</span></div>
+        <div class="rate-inverse" id="inv-eur"></div>
+      </div>
+    </div>
+
+    <div class="rate-card" id="card-jpy">
+      <div class="currency-header">
+        <div class="currency-flag">🇯🇵</div>
+        <div class="currency-info">
+          <div class="currency-code">JPY</div>
+          <div class="currency-name">Japanese Yen</div>
+        </div>
+      </div>
+      <div class="rate-row">
+        <div class="rate-label">100 JPY =</div>
+        <div class="rate-value loading" id="rate-jpy">—<span class="thb-unit">THB</span></div>
+        <div class="rate-inverse" id="inv-jpy"></div>
+      </div>
+    </div>
+
+    <div class="rate-card" id="card-sgd">
+      <div class="currency-header">
+        <div class="currency-flag">🇸🇬</div>
+        <div class="currency-info">
+          <div class="currency-code">SGD</div>
+          <div class="currency-name">Singapore Dollar</div>
+        </div>
+      </div>
+      <div class="rate-row">
+        <div class="rate-label">1 SGD =</div>
+        <div class="rate-value loading" id="rate-sgd">—<span class="thb-unit">THB</span></div>
+        <div class="rate-inverse" id="inv-sgd"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="controls">
+    <button class="refresh-btn" id="refresh-btn" onclick="fetchRates()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      Refresh
+    </button>
+    <div class="meta" id="meta"></div>
+    <div class="error" id="error-msg"></div>
+  </div>
+
+  <script>
+    const CURRENCIES = ['usd', 'gbp', 'eur', 'jpy', 'sgd'];
+    const REFRESH_INTERVAL = 60;
+
+    let countdown = REFRESH_INTERVAL;
+    let countdownTimer = null;
+
+    const btn = document.getElementById('refresh-btn');
+    const metaEl = document.getElementById('meta');
+    const errorEl = document.getElementById('error-msg');
+
+    function fmt(value, decimals = 2) {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      }).format(value);
+    }
+
+    function setLoading(on) {
+      CURRENCIES.forEach(c => {
+        document.getElementById(`rate-${c}`).classList.toggle('loading', on);
+      });
+      btn.disabled = on;
+      btn.classList.toggle('spinning', on);
+    }
+
+    function renderRates(rates) {
+      // rates is keyed by uppercase currency code, values are THB per 1 unit
+      const pairs = [
+        { id: 'usd', key: 'USD', label: '1 THB', decimals: 4 },
+        { id: 'gbp', key: 'GBP', label: '1 THB', decimals: 4 },
+        { id: 'eur', key: 'EUR', label: '1 THB', decimals: 4 },
+        { id: 'jpy', key: 'JPY', label: '100 THB', decimals: 2 },
+        { id: 'sgd', key: 'SGD', label: '1 THB', decimals: 4 },
+      ];
+
+      pairs.forEach(({ id, key, label, decimals }) => {
+        const thbPerUnit = rates[key];        // e.g. 34.48 THB per 1 USD
+        const unitPerThb = 1 / thbPerUnit;    // e.g. 0.029 USD per 1 THB
+
+        const rateEl = document.getElementById(`rate-${id}`);
+        const invEl  = document.getElementById(`inv-${id}`);
+
+        if (id === 'jpy') {
+          // Show 100 JPY = X THB for readability
+          rateEl.innerHTML = `${fmt(thbPerUnit * 100, 2)}<span class="thb-unit">THB</span>`;
+          invEl.textContent = `1 THB = ${fmt(unitPerThb * 100, 2)} JPY`;
+        } else {
+          rateEl.innerHTML = `${fmt(thbPerUnit, 2)}<span class="thb-unit">THB</span>`;
+          invEl.textContent = `${label} = ${fmt(unitPerThb, decimals)} ${key}`;
+        }
+      });
+    }
+
+    function startCountdown(updatedAt) {
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdown = REFRESH_INTERVAL;
+      metaEl.textContent = `Last updated: ${updatedAt} · Refreshing in ${countdown}s`;
+      countdownTimer = setInterval(() => {
+        countdown--;
+        metaEl.textContent = `Last updated: ${updatedAt} · Refreshing in ${countdown}s`;
+        if (countdown <= 0) {
+          clearInterval(countdownTimer);
+          fetchRates();
+        }
+      }, 1000);
+    }
+
+    async function fetchRates() {
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+      setLoading(true);
+      errorEl.textContent = '';
+
+      try {
+        // Fetch THB as base; rates give "1 THB = X foreign", so invert for "1 foreign = X THB"
+        const res = await fetch('https://open.er-api.com/v6/latest/THB');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.result !== 'success') throw new Error('API error');
+
+        // Invert: data.rates[USD] = THB-per-USD is wrong — actually open.er-api returns
+        // base=THB so rates[USD] = how many USD per 1 THB. Invert to get THB per 1 USD.
+        const thbPer = {};
+        ['USD', 'GBP', 'EUR', 'JPY', 'SGD'].forEach(code => {
+          thbPer[code] = 1 / data.rates[code];
+        });
+
+        renderRates(thbPer);
+        startCountdown(new Date().toLocaleTimeString());
+      } catch (err) {
+        errorEl.textContent = 'Failed to fetch rates. Please try again.';
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchRates();
+  </script>
+</body>
+</html>
