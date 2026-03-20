@@ -81,6 +81,18 @@
       margin-left: 4px;
     }
 
+    .change-badge {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-top: 8px;
+      padding: 3px 10px;
+      border-radius: 50px;
+      min-height: 1.4em;
+    }
+    .change-badge.up   { background: rgba(38, 194, 129, 0.15); color: #26c281; }
+    .change-badge.down { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+
     .meta {
       font-size: 0.78rem;
       color: rgba(255, 255, 255, 0.35);
@@ -244,6 +256,7 @@
       <div class="rate-block">
         <div class="rate-label">1 Bitcoin (BTC)</div>
         <div class="rate-value loading" id="btc-rate">—<span class="currency">USD</span></div>
+        <div class="change-badge" id="btc-change"></div>
       </div>
       <div class="rate-block">
         <div class="rate-label">1 Satoshi (sat)</div>
@@ -311,8 +324,15 @@
     const btcInput      = document.getElementById('btc-input');
     const btcFiatLabel  = document.getElementById('btc-fiat-label');
 
+    const changeEl    = document.getElementById('btc-change');
+
     let activeCurrency = 'usd';
     let cachedRates = null;
+    let cachedChange = null;
+
+    const REFRESH_INTERVAL = 30;
+    let countdown = REFRESH_INTERVAL;
+    let countdownTimer = null;
 
     const currencyConfig = {
       usd: { symbol: '$', code: 'USD', locale: 'en-US', satDecimals: 6 },
@@ -337,6 +357,26 @@
       const satPrice = btcPrice / SATS_PER_BTC;
       btcEl.innerHTML = `${cfg.symbol}${formatValue(btcPrice, 0, cfg.locale)}<span class="currency">${cfg.code}</span>`;
       satEl.innerHTML = `${cfg.symbol}${formatValue(satPrice, cfg.satDecimals, cfg.locale)}<span class="currency">${cfg.code}</span>`;
+
+      if (cachedChange !== null) {
+        const up = cachedChange >= 0;
+        changeEl.textContent = `${up ? '▲' : '▼'} ${up ? '+' : ''}${cachedChange.toFixed(2)}% (24h)`;
+        changeEl.className = `change-badge ${up ? 'up' : 'down'}`;
+      }
+    }
+
+    function updateMeta(updatedAt) {
+      countdown = REFRESH_INTERVAL;
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdownTimer = setInterval(() => {
+        countdown--;
+        metaEl.textContent = `Last updated: ${updatedAt} · Refreshing in ${countdown}s`;
+        if (countdown <= 0) {
+          clearInterval(countdownTimer);
+          fetchRates();
+        }
+      }, 1000);
+      metaEl.textContent = `Last updated: ${updatedAt} · Refreshing in ${countdown}s`;
     }
 
     function updateConverterLabel() {
@@ -402,6 +442,7 @@
     }
 
     async function fetchRates() {
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
       btn.disabled = true;
       btn.classList.add('spinning');
       btcEl.classList.add('loading');
@@ -410,20 +451,20 @@
 
       try {
         const [resBtc, resUsdtThb] = await Promise.all([
-          fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
+          fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
           fetch('https://api.binance.th/api/v1/ticker/bookTicker?symbol=USDTTHB'),
         ]);
         if (!resBtc.ok) throw new Error(`HTTP ${resBtc.status}`);
         if (!resUsdtThb.ok) throw new Error(`HTTP ${resUsdtThb.status}`);
         const [dataBtc, dataUsdtThb] = await Promise.all([resBtc.json(), resUsdtThb.json()]);
 
-        const btcUsd = parseFloat(dataBtc.price);
+        const btcUsd = parseFloat(dataBtc.lastPrice);
         const usdtThb = (parseFloat(dataUsdtThb.bidPrice) + parseFloat(dataUsdtThb.askPrice)) / 2;
         cachedRates = { usd: btcUsd, thb: btcUsd * usdtThb };
+        cachedChange = parseFloat(dataBtc.priceChangePercent);
         renderRates();
 
-        const now = new Date();
-        metaEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        updateMeta(new Date().toLocaleTimeString());
       } catch (err) {
         errorEl.textContent = 'Failed to fetch rates. Please try again.';
         console.error(err);
