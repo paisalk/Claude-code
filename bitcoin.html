@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitcoin Exchange Rate</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 48px 56px;
+      text-align: center;
+      width: min(480px, 90vw);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .logo {
+      font-size: 3.5rem;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #f7931a;
+      margin-bottom: 36px;
+    }
+
+    .rates {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-bottom: 36px;
+    }
+
+    .rate-block {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px 24px;
+    }
+
+    .rate-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 8px;
+    }
+
+    .rate-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fff;
+      min-height: 2.4rem;
+      transition: opacity 0.3s;
+    }
+
+    .rate-value.loading {
+      opacity: 0.35;
+    }
+
+    .rate-value .currency {
+      font-size: 1rem;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.55);
+      margin-left: 4px;
+    }
+
+    .change-badge {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-top: 8px;
+      padding: 3px 10px;
+      border-radius: 50px;
+      min-height: 1.4em;
+    }
+    .change-badge.up   { background: rgba(38, 194, 129, 0.15); color: #26c281; }
+    .change-badge.down { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+
+    .meta {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.35);
+      margin-bottom: 28px;
+      min-height: 1.2em;
+    }
+
+    .refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f7931a;
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 14px 36px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(247, 147, 26, 0.4);
+    }
+
+    .refresh-btn:hover:not(:disabled) {
+      background: #e07e0a;
+      box-shadow: 0 6px 28px rgba(247, 147, 26, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .refresh-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .refresh-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .refresh-btn svg {
+      transition: transform 0.6s;
+    }
+
+    .refresh-btn.spinning svg {
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error {
+      color: #ff6b6b;
+      font-size: 0.82rem;
+      margin-top: 16px;
+      min-height: 1.2em;
+    }
+
+    .currency-toggle {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 50px;
+      padding: 4px;
+      margin-bottom: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .currency-toggle button {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 24px;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .currency-toggle button.active {
+      background: #f7931a;
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(247, 147, 26, 0.4);
+    }
+
+    .converter {
+      margin-top: 36px;
+      padding-top: 36px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .converter h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f7931a;
+      margin-bottom: 24px;
+      letter-spacing: 0.04em;
+    }
+
+    .converter-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .converter-row .input-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    .converter-row label {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 6px;
+      text-align: left;
+    }
+
+    .converter-row input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .converter-row input:focus {
+      border-color: #f7931a;
+    }
+
+    .converter-row input::placeholder {
+      color: rgba(255, 255, 255, 0.25);
+    }
+
+    .swap-icon {
+      margin-top: 18px;
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.4);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">₿</div>
+    <h1>Bitcoin Exchange Rate</h1>
+
+    <div class="currency-toggle">
+      <button id="btn-usd" class="active" onclick="setCurrency('usd')">USD $</button>
+      <button id="btn-thb" onclick="setCurrency('thb')">THB ฿</button>
+    </div>
+
+    <div class="rates">
+      <div class="rate-block">
+        <div class="rate-label">1 Bitcoin (BTC)</div>
+        <div class="rate-value loading" id="btc-rate">—<span class="currency">USD</span></div>
+        <div class="change-badge" id="btc-change"></div>
+      </div>
+      <div class="rate-block">
+        <div class="rate-label">1 Satoshi (sat)</div>
+        <div class="rate-value loading" id="sat-rate">—<span class="currency">USD</span></div>
+      </div>
+    </div>
+
+    <div class="meta" id="last-updated"></div>
+
+    <button class="refresh-btn" id="refresh-btn" onclick="fetchRates()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      Refresh
+    </button>
+
+    <div class="error" id="error-msg"></div>
+
+    <div class="converter">
+      <h2>Satoshi Converter</h2>
+      <div class="converter-row">
+        <div class="input-wrap">
+          <label id="fiat-label">USD ($)</label>
+          <input type="text" id="fiat-input" placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="swap-icon">⇄</div>
+        <div class="input-wrap">
+          <label>Satoshi (sat)</label>
+          <input type="text" id="sat-input" placeholder="0" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+
+    <div class="converter">
+      <h2>Bitcoin Converter</h2>
+      <div class="converter-row">
+        <div class="input-wrap">
+          <label id="btc-fiat-label">USD ($)</label>
+          <input type="text" id="btc-fiat-input" placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="swap-icon">⇄</div>
+        <div class="input-wrap">
+          <label>Bitcoin (BTC)</label>
+          <input type="text" id="btc-input" placeholder="0.00000000" inputmode="decimal">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SATS_PER_BTC = 100_000_000;
+
+    const btcEl       = document.getElementById('btc-rate');
+    const satEl       = document.getElementById('sat-rate');
+    const metaEl      = document.getElementById('last-updated');
+    const errorEl     = document.getElementById('error-msg');
+    const btn         = document.getElementById('refresh-btn');
+    const fiatInput   = document.getElementById('fiat-input');
+    const satInput    = document.getElementById('sat-input');
+    const fiatLabel   = document.getElementById('fiat-label');
+    const btcFiatInput  = document.getElementById('btc-fiat-input');
+    const btcInput      = document.getElementById('btc-input');
+    const btcFiatLabel  = document.getElementById('btc-fiat-label');
+
+    const changeEl    = document.getElementById('btc-change');
+
+    let activeCurrency = 'usd';
+    let cachedRates = null;
+    let cachedChange = null;
+
+    const REFRESH_INTERVAL = 30;
+    let countdown = REFRESH_INTERVAL;
+    let countdownTimer = null;
+
+    const currencyConfig = {
+      usd: { symbol: '$', code: 'USD', locale: 'en-US', satDecimals: 6 },
+      thb: { symbol: '฿', code: 'THB', locale: 'th-TH', satDecimals: 6 },
+    };
+
+    function formatValue(value, decimals, locale) {
+      return new Intl.NumberFormat(locale, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      }).format(value);
+    }
+
+    function parseInputNumber(str) {
+      return parseFloat(str.replace(/,/g, '')) || 0;
+    }
+
+    function renderRates() {
+      if (!cachedRates) return;
+      const cfg = currencyConfig[activeCurrency];
+      const btcPrice = cachedRates[activeCurrency];
+      const satPrice = btcPrice / SATS_PER_BTC;
+      btcEl.innerHTML = `${cfg.symbol}${formatValue(btcPrice, 0, cfg.locale)}<span class="currency">${cfg.code}</span>`;
+      satEl.innerHTML = `${cfg.symbol}${formatValue(satPrice, cfg.satDecimals, cfg.locale)}<span class="currency">${cfg.code}</span>`;
+
+      if (cachedChange !== null) {
+        const up = cachedChange >= 0;
+        changeEl.textContent = `${up ? '▲' : '▼'} ${up ? '+' : ''}${cachedChange.toFixed(2)}% (24h)`;
+        changeEl.className = `change-badge ${up ? 'up' : 'down'}`;
+      }
+    }
+
+    function updateMeta(updatedAt) {
+      countdown = REFRESH_INTERVAL;
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdownTimer = setInterval(() => {
+        countdown--;
+        metaEl.textContent = `Last updated: ${updatedAt} · Refreshing in ${countdown}s`;
+        if (countdown <= 0) {
+          clearInterval(countdownTimer);
+          fetchRates();
+        }
+      }, 1000);
+      metaEl.textContent = `Last updated: ${updatedAt} · Refreshing in ${countdown}s`;
+    }
+
+    function updateConverterLabel() {
+      const cfg = currencyConfig[activeCurrency];
+      fiatLabel.textContent = `${cfg.code} (${cfg.symbol})`;
+      btcFiatLabel.textContent = `${cfg.code} (${cfg.symbol})`;
+    }
+
+    function convertFiatToSat() {
+      if (!cachedRates) return;
+      const fiatVal = parseInputNumber(fiatInput.value);
+      if (fiatVal === 0) { satInput.value = ''; return; }
+      const btcPrice = cachedRates[activeCurrency];
+      const satPrice = btcPrice / SATS_PER_BTC;
+      const sats = Math.round(fiatVal / satPrice);
+      satInput.value = sats.toLocaleString('en-US');
+    }
+
+    function convertSatToFiat() {
+      if (!cachedRates) return;
+      const cfg = currencyConfig[activeCurrency];
+      const sats = parseInputNumber(satInput.value);
+      if (sats === 0) { fiatInput.value = ''; return; }
+      const btcPrice = cachedRates[activeCurrency];
+      const satPrice = btcPrice / SATS_PER_BTC;
+      const fiatVal = sats * satPrice;
+      fiatInput.value = formatValue(fiatVal, 2, cfg.locale);
+    }
+
+    function convertBtcFiatToBtc() {
+      if (!cachedRates) return;
+      const cfg = currencyConfig[activeCurrency];
+      const fiatVal = parseInputNumber(btcFiatInput.value);
+      if (fiatVal === 0) { btcInput.value = ''; return; }
+      const btcPrice = cachedRates[activeCurrency];
+      btcInput.value = formatValue(fiatVal / btcPrice, 8, 'en-US');
+    }
+
+    function convertBtcToBtcFiat() {
+      if (!cachedRates) return;
+      const cfg = currencyConfig[activeCurrency];
+      const btcVal = parseInputNumber(btcInput.value);
+      if (btcVal === 0) { btcFiatInput.value = ''; return; }
+      const btcPrice = cachedRates[activeCurrency];
+      btcFiatInput.value = formatValue(btcVal * btcPrice, 2, cfg.locale);
+    }
+
+    fiatInput.addEventListener('input', convertFiatToSat);
+    satInput.addEventListener('input', convertSatToFiat);
+    btcFiatInput.addEventListener('input', convertBtcFiatToBtc);
+    btcInput.addEventListener('input', convertBtcToBtcFiat);
+
+    function setCurrency(currency) {
+      activeCurrency = currency;
+      document.getElementById('btn-usd').classList.toggle('active', currency === 'usd');
+      document.getElementById('btn-thb').classList.toggle('active', currency === 'thb');
+      renderRates();
+      updateConverterLabel();
+      fiatInput.value = '';
+      satInput.value = '';
+      btcFiatInput.value = '';
+      btcInput.value = '';
+    }
+
+    async function fetchRates() {
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+      btn.disabled = true;
+      btn.classList.add('spinning');
+      btcEl.classList.add('loading');
+      satEl.classList.add('loading');
+      errorEl.textContent = '';
+
+      try {
+        const [resBtc, resUsdtThb] = await Promise.all([
+          fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
+          fetch('https://api.binance.th/api/v1/ticker/bookTicker?symbol=USDTTHB'),
+        ]);
+        if (!resBtc.ok) throw new Error(`HTTP ${resBtc.status}`);
+        if (!resUsdtThb.ok) throw new Error(`HTTP ${resUsdtThb.status}`);
+        const [dataBtc, dataUsdtThb] = await Promise.all([resBtc.json(), resUsdtThb.json()]);
+
+        const btcUsd = parseFloat(dataBtc.lastPrice);
+        const usdtThb = (parseFloat(dataUsdtThb.bidPrice) + parseFloat(dataUsdtThb.askPrice)) / 2;
+        cachedRates = { usd: btcUsd, thb: btcUsd * usdtThb };
+        cachedChange = parseFloat(dataBtc.priceChangePercent);
+        renderRates();
+
+        updateMeta(new Date().toLocaleTimeString());
+      } catch (err) {
+        errorEl.textContent = 'Failed to fetch rates. Please try again.';
+        console.error(err);
+      } finally {
+        btcEl.classList.remove('loading');
+        satEl.classList.remove('loading');
+        btn.disabled = false;
+        btn.classList.remove('spinning');
+      }
+    }
+
+    // Fetch on page load
+    fetchRates();
+  </script>
+</body>
+</html>
