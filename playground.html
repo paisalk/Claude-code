@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cursor iOS Playground</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b1020;
+      --card: rgba(255, 255, 255, 0.06);
+      --stroke: rgba(255, 255, 255, 0.14);
+      --text: #f4f6fb;
+      --muted: rgba(244, 246, 251, 0.62);
+      --accent: #7c9cff;
+      --accent-2: #b8f2c0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1d2a5c 0%, transparent 55%),
+        radial-gradient(900px 500px at 110% 10%, #16382c 0%, transparent 50%),
+        var(--bg);
+      padding: 24px 16px 40px;
+    }
+
+    .wrap {
+      width: min(720px, 100%);
+      margin: 0 auto;
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      font-size: 0.85rem;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      padding: 8px 14px;
+    }
+
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 24px;
+      padding: 28px 24px;
+      margin-bottom: 20px;
+    }
+
+    .eyebrow {
+      color: var(--accent-2);
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: clamp(1.8rem, 6vw, 2.6rem);
+      line-height: 1.15;
+      margin-bottom: 12px;
+    }
+
+    .lede {
+      color: var(--muted);
+      font-size: 1.02rem;
+      line-height: 1.55;
+      max-width: 38rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .tile {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      padding: 18px 16px;
+    }
+
+    .num {
+      display: inline-flex;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: #081018;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .tile h2 {
+      font-size: 1.05rem;
+      margin-bottom: 6px;
+    }
+
+    .tile p {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    .status {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    #counter-btn {
+      background: var(--accent);
+      color: #081018;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    @media (min-width: 640px) {
+      .grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <strong>iOS Playground</strong>
+      <a href="index.html">Bitcoin rates</a>
+    </nav>
+
+    <section class="hero">
+      <p class="eyebrow">First repo</p>
+      <h1>Practice Cursor from your phone</h1>
+      <p class="lede">
+        This page is a safe canvas. From the iOS app, pick this repo, send a task,
+        watch the agent work, then review the pull request. Circle anything on a
+        screenshot to try Design Mode.
+      </p>
+      <div class="status">
+        <span>Button taps: <strong id="count">0</strong></span>
+        <button id="counter-btn" type="button">Tap me</button>
+      </div>
+    </section>
+
+    <div class="grid">
+      <article class="tile">
+        <div class="num">1</div>
+        <h2>Change the look</h2>
+        <p>Ask the agent to restyle this page: new accent color, darker card, or a bigger title.</p>
+      </article>
+      <article class="tile">
+        <div class="num">2</div>
+        <h2>Add a feature</h2>
+        <p>Try a greeting, a dark/light toggle, or a list of your own practice ideas.</p>
+      </article>
+      <article class="tile">
+        <div class="num">3</div>
+        <h2>Review and merge</h2>
+        <p>Open the PR on your phone, read the diff, leave a follow-up, then merge it.</p>
+      </article>
+    </div>
+
+    <footer>
+      Copy a prompt from <code>PRACTICE.md</code> and paste it into Cursor for iOS.
+      The Bitcoin page at <a href="index.html" style="color: var(--accent)">index.html</a> is a second, real app you can also change.
+    </footer>
+  </div>
+
+  <script>
+    const countEl = document.getElementById("count");
+    const btn = document.getElementById("counter-btn");
+    let count = 0;
+    btn.addEventListener("click", () => {
+      count += 1;
+      countEl.textContent = String(count);
+    });
+  </script>
+</body>
+</html>
